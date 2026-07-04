@@ -39,8 +39,6 @@ class Home {
         Hooks::TemplateHooksIII();
 #elif defined(GTAVC)
         Hooks::TemplateHooksVC();
-#else
-        Hooks::TemplateHooksSA();
 #endif
         Events::initRwEvent += OnInitRw;
         Events::gameProcessEvent += OnGameProcess;
