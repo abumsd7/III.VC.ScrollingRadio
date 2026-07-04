@@ -1,0 +1,163 @@
+#pragma once
+#include <CPad.h>
+#include <plugin.h>
+
+#define MOUSE_CUSTOM_OFFSET 2000
+
+enum pcButtons {
+  PC_NOBUTTON = -1,
+  PC_0,
+  PC_1,
+  PC_2,
+  PC_3,
+  PC_4,
+  PC_5,
+  PC_6,
+  PC_7,
+  PC_8,
+  PC_9,
+  PC_A,
+  PC_ALT,
+  PC_APPS,
+  PC_B,
+  PC_BACKSP,
+  PC_C,
+  PC_CAPSLK,
+  PC_D,
+  PC_DEL,
+  PC_DIVIDE,
+  PC_DOWN,
+  PC_E,
+  PC_END,
+  PC_ENTER,
+  PC_ESC,
+  PC_F,
+  PC_F1,
+  PC_F10,
+  PC_F11,
+  PC_F12,
+  PC_F2,
+  PC_F3,
+  PC_F4,
+  PC_F5,
+  PC_F6,
+  PC_F7,
+  PC_F8,
+  PC_F9,
+  PC_G,
+  PC_H,
+  PC_HOME,
+  PC_I,
+  PC_INS,
+  PC_J,
+  PC_K,
+  PC_L,
+  PC_LALT,
+  PC_LCTRL,
+  PC_LEFT,
+  PC_LMB,
+  PC_LSHIFT,
+  PC_LWIN,
+  PC_M,
+  PC_MENU,
+  PC_MINUS,
+  PC_MMB,
+  PC_MWHD,
+  PC_MWHU,
+  PC_N,
+  PC_NUMLOCK,
+  PC_O,
+  PC_P,
+  PC_PAD5,
+  PC_PADDOWN,
+  PC_PADEND,
+  PC_PADENTER,
+  PC_PADHOME,
+  PC_PADINS,
+  PC_PADLEFT,
+  PC_PADPGDN,
+  PC_PADPGUP,
+  PC_PADRIGHT,
+  PC_PADUP,
+  PC_PAUSE,
+  PC_PGDN,
+  PC_PGUP,
+  PC_PLUS,
+  PC_PRINT,
+  PC_Q,
+  PC_R,
+  PC_RALT,
+  PC_RCTRL,
+  PC_RIGHT,
+  PC_RMB,
+  PC_RSHIFT,
+  PC_RWIN,
+  PC_S,
+  PC_SCROLL,
+  PC_SHIFT,
+  PC_SPACEBAR,
+  PC_T,
+  PC_TAB,
+  PC_TIMES,
+  PC_U,
+  PC_UP,
+  PC_V,
+  PC_W,
+  PC_X,
+  PC_Y,
+  PC_Z,
+  PC_MAXBUTTONS
+};
+
+enum xBoxButtons {
+  XB_NOBUTTON = -1,
+  XB_CIRCLE,
+  XB_CROSS,
+  XB_DLR,
+  XB_DOWN,
+  XB_DUD,
+  XB_L1,
+  XB_L2,
+  XB_L3,
+  XB_LEFT,
+  XB_R1,
+  XB_R2,
+  XB_R3,
+  XB_RIGHT,
+  XB_SQUARE,
+  XB_THUMBL,
+  XB_THUMBLX,
+  XB_THUMBLXL,
+  XB_THUMBLXR,
+  XB_THUMBLY,
+  XB_THUMBLYD,
+  XB_THUMBLYU,
+  XB_THUMBR,
+  XB_THUMBRX,
+  XB_THUMBRXL,
+  XB_THUMBRXR,
+  XB_THUMBRY,
+  XB_THUMBRYD,
+  XB_THUMBRYU,
+  XB_TRIANGLE,
+  XB_UP,
+  XB_MAXBUTTONS
+};
+
+class InputHandler {
+public:
+  static bool oldKeyState[256];
+
+  __declspec(noinline) static bool IsKeyJustPressed(unsigned int key);
+  static void UpdateOldKeyState();
+
+  static int StringToKey(const char* str);
+
+  static const char* KeyToString(int key);
+
+  static void ResetKeyState() {
+    int i;
+    for (i = 0; i < 256; i++)
+      oldKeyState[i] = false;
+  }
+};

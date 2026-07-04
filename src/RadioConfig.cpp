@@ -1,0 +1,58 @@
+#include "../includes/RadioConfig.h"
+#include <cstdlib>
+#include <fstream>
+#include <string>
+
+#define RADIO_CONFIG_INI_PATH GAME_PATH("charlesvercetti_mods\\ScrollingRadio\\scrolling_radio.ini")
+
+RadioConfig config;
+
+RadioConfig::RadioConfig() {
+    ReloadKey = 162; // VK_LCONTROL
+    ColorType = 2;   // 1. Fully color, 2. active in color, others grey, 3. all grey
+    IconGap = 3;
+    IconSizeMultiplier = 50; // 100%
+    Alpha1stNonActive = 128;   // 64 by default
+    Alpha2ndNonActive = 64;   // 32 by default
+}
+
+bool RadioConfig::Read() {
+    std::string iniPath = RADIO_CONFIG_INI_PATH;
+    ConfigHelper cfg(iniPath);
+
+    if (!cfg.Exists()) {
+        return false;
+    }
+
+    ReloadKey = cfg.ReadInt("Settings", "ReloadKey", ReloadKey);
+    ColorType = cfg.ReadInt("Settings", "ColorType", ColorType);
+    IconGap = cfg.ReadInt("Settings", "IconGap", IconGap);
+    IconSizeMultiplier = cfg.ReadInt("Settings", "IconSizeMultiplier", IconSizeMultiplier);
+    Alpha1stNonActive = cfg.ReadInt("Settings", "Alpha1stNonActive", Alpha1stNonActive);
+    Alpha2ndNonActive = cfg.ReadInt("Settings", "Alpha2ndNonActive", Alpha2ndNonActive);
+
+    return true;
+}
+
+void RadioConfig::Write() {
+    std::string iniPath = RADIO_CONFIG_INI_PATH;
+    ConfigHelper cfg(iniPath);
+
+    cfg.WriteInt("Settings", "ReloadKey", ReloadKey, "Key to reload configuration");
+    cfg.WriteInt("Settings", "ColorType", ColorType, "1 = Fully color, 2 = Active color / others grey, 3 = All grey");
+    cfg.WriteInt("Settings", "IconGap", IconGap, "Gap divisor between icons");
+    cfg.WriteInt("Settings", "IconSizeMultiplier", IconSizeMultiplier, "Size multiplier in percentage (e.g. 100 for 1.0x)");
+    cfg.WriteInt("Settings", "Alpha1stNonActive", Alpha1stNonActive, "Transparency level of the 1st non-active icon (0-255)");
+    cfg.WriteInt("Settings", "Alpha2ndNonActive", Alpha2ndNonActive, "Transparency level of the 2nd non-active icon (0-255)");
+
+    cfg.Format("; scrolling_radio.ini - Scrolling Radio Configuration\n");
+}
+
+void RadioConfig::GenerateDefault() {
+    std::string iniPath = RADIO_CONFIG_INI_PATH;
+    ConfigHelper cfg(iniPath);
+
+    if (!cfg.Exists()) {
+        Write();
+    }
+}
