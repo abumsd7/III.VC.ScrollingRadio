@@ -270,7 +270,7 @@ void Radio::DrawRadioIcons() {
     // Quick mute button 'X' handling
     if (InputHandler::IsKeyJustPressed('X')) {
         savedVolume = MUSIC_VOLUME_PREF;
-        RADIO_MANAGER.SetMusicMasterVolume(1); // Use 1 instead of 0; SA's CAEStreamThread divides by volume
+        RADIO_MANAGER.SetMusicMasterVolume(1);
         isMuted = true;
     }
 #endif
