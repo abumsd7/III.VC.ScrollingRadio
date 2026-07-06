@@ -5,18 +5,26 @@
 #include "extensions/Screen.h"
 #include <cmath>
 #include "CFileLoader.h"
-#include "cDMAudio.h"
 #include "CMenuManager.h"
 #include "CPad.h"
 
 #ifdef GTA3
+#include "cDMAudio.h"
 #include "cMusicManager.h"
 #include "eRadioStations.h"
 #define RADIO_MANAGER gMusicManager
 #define MUSIC_VOLUME_PREF CMenuManager::m_nPrefsMusicVolume
-#else
+#define ACTIVE_STATIONS 12
+#elif defined(GTAVC)
+#include "cDMAudio.h"
 #define RADIO_MANAGER DMAudio
 #define MUSIC_VOLUME_PREF FrontEndMenuManager.m_nPrefsMusicVolume
+#define ACTIVE_STATIONS 12
+#else
+#include "CAudioEngine.h"
+#define RADIO_MANAGER AudioEngine
+#define MUSIC_VOLUME_PREF FrontEndMenuManager.m_nPrefsMusicVolume
+#define ACTIVE_STATIONS 13
 #endif
 
 using namespace plugin;
@@ -25,8 +33,10 @@ RwTexDictionary *Radio::radioTexDict = nullptr;
 
 #ifdef GTA3
 CSprite2d Radio::radioIcons[21];
-#else
+#elif defined(GTAVC)
 CSprite2d Radio::radioIcons[23];
+#else
+CSprite2d Radio::radioIcons[25];
 #endif
 
 const char *Radio::radioIconNamesIII[21] = {
@@ -45,6 +55,32 @@ const char *Radio::radioIconNamesVC[23] = {
     "vrock_gray", "wave103",     "wave103_gray", "wildstyle",    "wildstyle_gray"
 };
 
+const char *Radio::radioIconNamesSA[25] = {"off_button",
+                                           "radio_bounce",
+                                           "radio_bounce_gray",
+                                           "radio_csr",
+                                           "radio_csr_gray",
+                                           "radio_KDST",
+                                           "radio_KDST_gray",
+                                           "radio_kjah",
+                                           "radio_kjah_gray",
+                                           "radio_krose",
+                                           "radio_krose_gray",
+                                           "radio_mastersounds",
+                                           "radio_mastersounds_gray",
+                                           "radio_playback",
+                                           "radio_playback_gray",
+                                           "radio_RADIOX",
+                                           "radio_RADIOX_gray",
+                                           "radio_RLS",
+                                           "radio_RLS_gray",
+                                           "radio_SFUR",
+                                           "radio_SFUR_gray",
+                                           "radio_TPLAYER",
+                                           "radio_TPLAYER_gray",
+                                           "radio_WCTR",
+                                           "radio_WCTR_gray"}; 
+
 static int GetActiveStations(RadioStation *outStations) {
     int count;
 
@@ -61,7 +97,7 @@ static int GetActiveStations(RadioStation *outStations) {
     outStations[count++] = { 8, 0, 1 };    // CHATTERBOX_109 -> chatterbox
     outStations[count++] = { 9, 14, 15 };  // MP3_PLAEYR -> mp3player
     outStations[count++] = { 11, 18, -1 }; // RADIO_OFF -> off_button
-#else
+#elif defined(GTAVC)
     outStations[count++] = { 0, 21, 22 };  // WILDSTYLE
     outStations[count++] = { 1, 8, 9 };    // FLASH_FM
     outStations[count++] = { 2, 10, 11 };  // KCHAT
@@ -77,6 +113,21 @@ static int GetActiveStations(RadioStation *outStations) {
     } else {
         outStations[count++] = { 9, 14, -1 };  // RADIO_OFF (9)
     }
+#else
+    outStations[count++] = {0, 0, -1}; // RADIO_OFF
+    outStations[count++] = {1, 13, 14}; // PLAYBACK
+    outStations[count++] = {2, 9, 10};   // K_ROSE
+    outStations[count++] = {3, 5, 6};    // K_DST
+    outStations[count++] = {4, 1, 2};    // BOUNCE
+    outStations[count++] = {5, 19, 20};  // SF_UR
+    outStations[count++] = {6, 17, 18};  // RADIO_LOS_SANTOS
+    outStations[count++] = {7, 15, 16};  // RADIO_X 
+    outStations[count++] = {8, 3, 4};    // CSR 
+    outStations[count++] = {9, 7, 8};    // JAH_RADIO
+    outStations[count++] = {10, 11, 12};  // MASTERSOUNDS 
+    outStations[count++] = {11, 23, 24};  // WCTR
+    outStations[count++] = {12, 21, 22}; // MP3 
+
 #endif
     return count;
 }
@@ -143,10 +194,15 @@ void Radio::InitRadio() {
     for (i = 0; i < 21; ++i) {
         radioIcons[i].m_pTexture = RwTexDictionaryFindNamedTexture(radioTexDict, radioIconNamesIII[i]);
     }
-#else
+#elif defined(GTAVC)
     radioTexDict = CFileLoader::LoadTexDictionary(GAME_PATH("charlesvercetti_mods\\ScrollingRadio\\radio_vc.txd"));
     for (i = 0; i < 23; ++i) {
         radioIcons[i].m_pTexture = RwTexDictionaryFindNamedTexture(radioTexDict, radioIconNamesVC[i]);
+    }
+#else
+    radioTexDict = CFileLoader::LoadTexDictionary(GAME_PATH("charlesvercetti_mods\\ScrollingRadio\\radio_sa.txd"));
+    for (i = 0; i < 25; ++i) {
+        radioIcons[i].m_pTexture = RwTexDictionaryFindNamedTexture(radioTexDict, radioIconNamesSA[i]);
     }
 #endif
 }
@@ -159,14 +215,13 @@ void Radio::DrawRadioIcons() {
     static bool isMuted = false;
     CVehicle *vehicle;
     CPed *player;
-    RadioStation activeStations[12];
+    RadioStation activeStations[ACTIVE_STATIONS];
     int radioId, isDriving, targetScrollSlot, loopIndex, stationCount;
     float screenWidth, screenHeight, firstOffset, secondOffset, centerX, centerY, scrollDiff, interpStep, relPos, drawX, drawY, drawAlpha;
 
 
     vehicle = FindPlayerVehicle();
     player = FindPlayerPed();
-    radioId = vehicle ? vehicle->m_nRadioStation : 0;
     isDriving = player ? (player->m_ePedState == PEDSTATE_DRIVING) : 0;
 
     if (!isDriving) {
@@ -176,6 +231,8 @@ void Radio::DrawRadioIcons() {
     stationCount = GetActiveStations(activeStations);
 
     // Restore music volume if a radio key is pressed and we are muted
+#ifdef GTA3 || defined(GTAVC)
+    radioId = vehicle ? vehicle->m_nRadioStation : 0;
     if (isMuted) {
         if (CPad::GetPad(0)->ChangeStationJustDown()) {
             DMAudio.SetMusicMasterVolume(savedVolume);
@@ -201,7 +258,22 @@ void Radio::DrawRadioIcons() {
         }
 #endif
     }
+#else
+    radioId = vehicle ? RADIO_MANAGER.GetCurrentRadioStationID() : 0;
+    if (isMuted) {
+        if (CPad::GetPad(0)->NextStationJustUp() || CPad::GetPad(0)->LastStationJustUp()) {
+            RADIO_MANAGER.SetMusicMasterVolume(savedVolume);
+            isMuted = false;
+        }
+    }
 
+    // Quick mute button 'X' handling
+    if (InputHandler::IsKeyJustPressed('X')) {
+        savedVolume = MUSIC_VOLUME_PREF;
+        RADIO_MANAGER.SetMusicMasterVolume(1); // Use 1 instead of 0; SA's CAEStreamThread divides by volume
+        isMuted = true;
+    }
+#endif
     // Auto-update display timeout if radio station changes
     if (radioId != lastStationId) {
         displayTimeout = CTimer::m_snTimeInMilliseconds + 4000;
@@ -289,8 +361,12 @@ void Radio::ShutdownRadio() {
         for (i = 0; i < 21; ++i) {
             radioIcons[i].m_pTexture = nullptr;
         }
-#else
+#elif defined(GTAVC)
         for (i = 0; i < 23; ++i) {
+            radioIcons[i].m_pTexture = nullptr;
+        }
+#else
+        for (i = 0; i < 25; ++i) {
             radioIcons[i].m_pTexture = nullptr;
         }
 #endif

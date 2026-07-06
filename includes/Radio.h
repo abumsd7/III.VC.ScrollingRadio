@@ -13,11 +13,14 @@ class Radio {
     static RwTexDictionary *radioTexDict;
 #ifdef GTA3
     static CSprite2d radioIcons[21];
-#else
+#elif defined(GTAVC)
     static CSprite2d radioIcons[23];
+#else
+    static CSprite2d radioIcons[25];
 #endif
     static const char *radioIconNamesIII[21];
     static const char *radioIconNamesVC[23];
+    static const char *radioIconNamesSA[25];
 
     static void InitRadio();
     static void DrawRadioIcons();

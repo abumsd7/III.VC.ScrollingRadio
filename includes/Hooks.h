@@ -5,4 +5,5 @@ class Hooks {
 public:
   static void TemplateHooksVC();
   static void TemplateHooksIII();
+  static void TemplateHooksSA();
 };

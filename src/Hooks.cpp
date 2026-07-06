@@ -9,3 +9,7 @@ void Hooks::TemplateHooksVC() {
 void Hooks::TemplateHooksIII() {
     patch::Nop(0x48E400, 5); // radio nop
 }
+
+void Hooks::TemplateHooksSA() {
+    patch::PutRetn(0x507030); // radio nop
+}
