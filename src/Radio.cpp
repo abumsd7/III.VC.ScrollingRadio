@@ -7,6 +7,8 @@
 #include "CFileLoader.h"
 #include "CMenuManager.h"
 #include "CPad.h"
+#include "CCamera.h"
+#include "CReplay.h"
 
 #ifdef GTA3
 #include "cDMAudio.h"
@@ -22,6 +24,7 @@
 #define ACTIVE_STATIONS 12
 #else
 #include "CAudioEngine.h"
+#include "CAERadioTrackManager.h"
 #define RADIO_MANAGER AudioEngine
 #define MUSIC_VOLUME_PREF FrontEndMenuManager.m_nPrefsMusicVolume
 #define ACTIVE_STATIONS 13
@@ -35,6 +38,7 @@ RwTexDictionary *Radio::radioTexDict = nullptr;
 CSprite2d Radio::radioIcons[21];
 #elif defined(GTAVC)
 CSprite2d Radio::radioIcons[23];
+int32_t& gNumRetunePresses = *(int32_t *)0x783998;
 #else
 CSprite2d Radio::radioIcons[25];
 #endif
@@ -95,8 +99,12 @@ static int GetActiveStations(RadioStation *outStations) {
     outStations[count++] = { 6, 16, 17 };  // MSX_FM -> msx
     outStations[count++] = { 7, 4, 5 };    // FLASHBACK_95_6 -> flashback
     outStations[count++] = { 8, 0, 1 };    // CHATTERBOX_109 -> chatterbox
-    outStations[count++] = { 9, 14, 15 };  // MP3_PLAEYR -> mp3player
-    outStations[count++] = { 11, 18, -1 }; // RADIO_OFF -> off_button
+    if (DMAudio.IsMP3RadioChannelAvailable()) {
+        outStations[count++] = { 9, 14, 15 };  // MP3_PLAEYR -> mp3player
+        outStations[count++] = { 11, 18, -1 }; // RADIO_OFF -> off_button
+    } else {
+        outStations[count++] = { 10, 18, -1 }; // RADIO_OFF -> off_button
+    }
 #elif defined(GTAVC)
     outStations[count++] = { 0, 21, 22 };  // WILDSTYLE
     outStations[count++] = { 1, 8, 9 };    // FLASH_FM
@@ -114,7 +122,7 @@ static int GetActiveStations(RadioStation *outStations) {
         outStations[count++] = { 9, 14, -1 };  // RADIO_OFF (9)
     }
 #else
-    outStations[count++] = {0, 0, -1}; // RADIO_OFF
+    outStations[count++] = {13, 0, -1}; // RADIO_OFF (13 is RADIO_NONE)
     outStations[count++] = {1, 13, 14}; // PLAYBACK
     outStations[count++] = {2, 9, 10};   // K_ROSE
     outStations[count++] = {3, 5, 6};    // K_DST
@@ -127,7 +135,6 @@ static int GetActiveStations(RadioStation *outStations) {
     outStations[count++] = {10, 11, 12};  // MASTERSOUNDS 
     outStations[count++] = {11, 23, 24};  // WCTR
     outStations[count++] = {12, 21, 22}; // MP3 
-
 #endif
     return count;
 }
@@ -207,32 +214,66 @@ void Radio::InitRadio() {
 #endif
 }
 
-void Radio::DrawRadioIcons() {
+void __fastcall Radio::DrawRadioIcons(void* self, int edx) {
+    if (CTimer::m_UserPause || CTimer::m_CodePause || TheCamera.m_bWideScreenOn || CReplay::Mode) {
+        return;
+    }
+
     static float currentScrollPos = -1.0f;
     static int lastStationId = -1;
     static unsigned int displayTimeout = 0;
     static unsigned char savedVolume = 64;
     static bool isMuted = false;
+    static bool wasDriving = false;
     CVehicle *vehicle;
     CPed *player;
     RadioStation activeStations[ACTIVE_STATIONS];
     int radioId, isDriving, targetScrollSlot, loopIndex, stationCount;
     float screenWidth, screenHeight, firstOffset, secondOffset, centerX, centerY, scrollDiff, interpStep, relPos, drawX, drawY, drawAlpha;
 
-
     vehicle = FindPlayerVehicle();
     player = FindPlayerPed();
     isDriving = player ? (player->m_ePedState == PEDSTATE_DRIVING) : 0;
 
     if (!isDriving) {
+        wasDriving = false;
         return;
     }
 
     stationCount = GetActiveStations(activeStations);
 
-    // Restore music volume if a radio key is pressed and we are muted
-#ifdef GTA3 || defined(GTAVC)
-    radioId = vehicle ? vehicle->m_nRadioStation : 0;
+    // 1. Resolve raw game radio station ID and map ambient/silence to RADIO_OFF
+#if defined(GTA3) || defined(GTAVC)
+    int rawRadioId = vehicle ? vehicle->m_nRadioStation : 0;
+#ifdef GTA3
+    if (rawRadioId == 12 || rawRadioId == 13) {
+        rawRadioId = DMAudio.IsMP3RadioChannelAvailable() ? 11 : 10;
+    }
+#else // VC
+    if (rawRadioId >= 11 && rawRadioId <= 14) {
+        rawRadioId = RADIO_MANAGER.IsMP3RadioChannelAvailable() ? 10 : 9;
+    }
+#endif
+
+    // 2. Map raw ID to contiguous slot index, apply preview offset, then resolve final radioId
+    int currentSlot = GetScrollIndex(rawRadioId, activeStations, stationCount);
+    int targetSlot = currentSlot;
+    if (gNumRetunePresses != 0) {
+        targetSlot = currentSlot + gNumRetunePresses;
+        while (targetSlot < 0) targetSlot += stationCount;
+        while (targetSlot >= stationCount) targetSlot -= stationCount;
+
+        // Replicate default GTA VC skip behavior for USERTRACK when MP3 is unavailable
+#ifdef GTAVC
+        if (!RADIO_MANAGER.IsMP3RadioChannelAvailable() && targetSlot == 9) {
+            gNumRetunePresses++;
+            targetSlot = 9; // Skip/wrap to RADIO_OFF
+        }
+#endif
+    }
+    radioId = activeStations[targetSlot].gameId;
+
+    // 3. Handle quick mute volume saving & restoration
     if (isMuted) {
         if (CPad::GetPad(0)->ChangeStationJustDown()) {
             DMAudio.SetMusicMasterVolume(savedVolume);
@@ -247,7 +288,7 @@ void Radio::DrawRadioIcons() {
         isMuted = true;
 #ifdef GTA3
         DMAudio.SetRadioInCar(10);
-        vehicle->m_nRadioStation = 11; // RADIO_OFF (11)
+        vehicle->m_nRadioStation = DMAudio.IsMP3RadioChannelAvailable() ? 11 : 10;
 #else
         if (DMAudio.IsMP3RadioChannelAvailable()) {
             DMAudio.SetRadioInCar(10);
@@ -258,8 +299,23 @@ void Radio::DrawRadioIcons() {
         }
 #endif
     }
-#else
-    radioId = vehicle ? RADIO_MANAGER.GetCurrentRadioStationID() : 0;
+#else // SA
+    if (AERadioTrackManager.m_bRetuneJustStarted && AERadioTrackManager.IsVehicleRadioActive()) {
+        AERadioTrackManager.m_nTimeToDisplayRadioName = CTimer::m_snTimeInMilliseconds + 2500;
+        AERadioTrackManager.m_bRetuneJustStarted = false;
+    }
+
+    int rawRadioId = vehicle ? RADIO_MANAGER.GetCurrentRadioStationID() : 0;
+    int currentSlot = GetScrollIndex(rawRadioId, activeStations, stationCount);
+    int targetSlot = currentSlot;
+    int stationsListed = AERadioTrackManager.m_nStationsListed;
+    if (stationsListed != 0) {
+        targetSlot = currentSlot + stationsListed;
+        while (targetSlot < 0) targetSlot += stationCount;
+        while (targetSlot >= stationCount) targetSlot -= stationCount;
+    }
+    radioId = activeStations[targetSlot].gameId;
+
     if (isMuted) {
         if (CPad::GetPad(0)->NextStationJustUp() || CPad::GetPad(0)->LastStationJustUp()) {
             RADIO_MANAGER.SetMusicMasterVolume(savedVolume);
@@ -267,17 +323,18 @@ void Radio::DrawRadioIcons() {
         }
     }
 
-    // Quick mute button 'X' handling
     if (InputHandler::IsKeyJustPressed('X')) {
         savedVolume = MUSIC_VOLUME_PREF;
         RADIO_MANAGER.SetMusicMasterVolume(1);
         isMuted = true;
     }
 #endif
-    // Auto-update display timeout if radio station changes
-    if (radioId != lastStationId) {
-        displayTimeout = CTimer::m_snTimeInMilliseconds + 4000;
+
+    // Auto-update display timeout if radio station changes or player just entered a car
+    if (!wasDriving || radioId != lastStationId) {
+        displayTimeout = CTimer::m_snTimeInMilliseconds + config.RadioSliderTimeout;
         lastStationId = radioId;
+        wasDriving = true;
     }
 
     // Keep scrolling animation running even if HUD is not shown to keep it in sync
@@ -295,7 +352,7 @@ void Radio::DrawRadioIcons() {
     }
 
     if (fabs(scrollDiff) > 0.001f) {
-        interpStep = 0.15f * CTimer::ms_fTimeStep;
+        interpStep = ((float)config.RadioSliderAnimSpeed / 100.0f) * CTimer::ms_fTimeStep;
         if (interpStep > 1.0f) {
             interpStep = 1.0f;
         }
@@ -322,8 +379,8 @@ void Radio::DrawRadioIcons() {
         centerX = screenWidth / 2.0f;
         centerY = screenHeight / 12.0f;
 
-        RwRenderStateSet(rwRENDERSTATESHADEMODE, (void *)rwSHADEMODEFLAT);
-        RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void *)rwFILTERLINEAR);
+        RwRenderStateSet(rwRENDERSTATESHADEMODE, (void *)rwSHADEMODEGOURAUD);
+        RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void *)rwFILTERLINEARMIPLINEAR);
         RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void *)TRUE);
 
         for (loopIndex = 0; loopIndex < stationCount; loopIndex++) {

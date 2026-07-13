@@ -1,15 +1,16 @@
 #include "../includes/Hooks.h"
 #include "../includes/SomeMacros.h"
+#include "../includes/Radio.h"
 using namespace plugin;
 
 void Hooks::TemplateHooksVC() {
-    patch::PutRetn(0x5F9EE0); // radio nop
+    patch::RedirectJump(0x5F9EE0, Radio::DrawRadioIcons);
 }
 
 void Hooks::TemplateHooksIII() {
-    patch::Nop(0x48E400, 5); // radio nop
+    patch::RedirectJump(0x57E6D0, Radio::DrawRadioIcons);
 }
 
 void Hooks::TemplateHooksSA() {
-    patch::PutRetn(0x507030); // radio nop
+    patch::RedirectJump(0x507030, Radio::DrawRadioIcons);
 }

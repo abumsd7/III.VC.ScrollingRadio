@@ -23,6 +23,6 @@ class Radio {
     static const char *radioIconNamesSA[25];
 
     static void InitRadio();
-    static void DrawRadioIcons();
+    static void __fastcall DrawRadioIcons(void* self = nullptr, int edx = 0);
     static void ShutdownRadio();
 };

@@ -23,9 +23,6 @@ static void OnGameProcess() {
 }
 
 static void OnDrawHud() {
-    if ((CHud::m_Wants_To_Draw_Hud) && !TheCamera.m_bWideScreenOn && !CReplay::Mode) {
-        Radio::DrawRadioIcons();
-    }
 }
 
 static void OnShutdownRw() {

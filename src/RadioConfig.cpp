@@ -14,6 +14,8 @@ RadioConfig::RadioConfig() {
     IconSizeMultiplier = 50; // 100%
     Alpha1stNonActive = 128;   // 64 by default
     Alpha2ndNonActive = 64;   // 32 by default
+    RadioSliderTimeout = 4000;
+    RadioSliderAnimSpeed = 15;
 }
 
 bool RadioConfig::Read() {
@@ -30,6 +32,8 @@ bool RadioConfig::Read() {
     IconSizeMultiplier = cfg.ReadInt("Settings", "IconSizeMultiplier", IconSizeMultiplier);
     Alpha1stNonActive = cfg.ReadInt("Settings", "Alpha1stNonActive", Alpha1stNonActive);
     Alpha2ndNonActive = cfg.ReadInt("Settings", "Alpha2ndNonActive", Alpha2ndNonActive);
+    RadioSliderTimeout = cfg.ReadInt("Settings", "RadioSliderTimeout", RadioSliderTimeout);
+    RadioSliderAnimSpeed = cfg.ReadInt("Settings", "RadioSliderAnimSpeed", RadioSliderAnimSpeed);
 
     return true;
 }
@@ -44,6 +48,8 @@ void RadioConfig::Write() {
     cfg.WriteInt("Settings", "IconSizeMultiplier", IconSizeMultiplier, "Size multiplier in percentage (e.g. 100 for 1.0x)");
     cfg.WriteInt("Settings", "Alpha1stNonActive", Alpha1stNonActive, "Transparency level of the 1st non-active icon (0-255)");
     cfg.WriteInt("Settings", "Alpha2ndNonActive", Alpha2ndNonActive, "Transparency level of the 2nd non-active icon (0-255)");
+    cfg.WriteInt("Settings", "RadioSliderTimeout", RadioSliderTimeout, "Display duration in milliseconds");
+    cfg.WriteInt("Settings", "RadioSliderAnimSpeed", RadioSliderAnimSpeed, "Scroll animation speed factor (1-100, where 15 = 0.15)");
 
     cfg.Format("; scrolling_radio.ini - Scrolling Radio Configuration\n");
 }

@@ -9,6 +9,8 @@ class RadioConfig {
     int IconSizeMultiplier;
     int Alpha1stNonActive;
     int Alpha2ndNonActive;
+    int RadioSliderTimeout;
+    int RadioSliderAnimSpeed;
 
     RadioConfig();
 
