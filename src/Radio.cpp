@@ -259,17 +259,19 @@ void __fastcall Radio::DrawRadioIcons(void* self, int edx) {
     int currentSlot = GetScrollIndex(rawRadioId, activeStations, stationCount);
     int targetSlot = currentSlot;
     if (gNumRetunePresses != 0) {
-        targetSlot = currentSlot + gNumRetunePresses;
-        while (targetSlot < 0) targetSlot += stationCount;
-        while (targetSlot >= stationCount) targetSlot -= stationCount;
-
-        // Replicate default GTA VC skip behavior for USERTRACK when MP3 is unavailable
+        int offset = gNumRetunePresses;
 #ifdef GTAVC
-        if (!RADIO_MANAGER.IsMP3RadioChannelAvailable() && targetSlot == 9) {
-            gNumRetunePresses++;
-            targetSlot = 9; // Skip/wrap to RADIO_OFF
+        if (!RADIO_MANAGER.IsMP3RadioChannelAvailable()) {
+            if (offset >= 2) {
+                offset -= 1;
+            } else if (offset <= -2) {
+                offset += 1;
+            }
         }
 #endif
+        targetSlot = currentSlot + offset;
+        while (targetSlot < 0) targetSlot += stationCount;
+        while (targetSlot >= stationCount) targetSlot -= stationCount;
     }
     radioId = activeStations[targetSlot].gameId;
 
@@ -300,9 +302,9 @@ void __fastcall Radio::DrawRadioIcons(void* self, int edx) {
 #endif
     }
 #else // SA
-    if (AERadioTrackManager.m_bRetuneJustStarted && AERadioTrackManager.IsVehicleRadioActive()) {
+    if (AERadioTrackManager.m_bDisplayStationName && AERadioTrackManager.IsVehicleRadioActive()) {
         AERadioTrackManager.m_nTimeToDisplayRadioName = CTimer::m_snTimeInMilliseconds + 2500;
-        AERadioTrackManager.m_bRetuneJustStarted = false;
+        AERadioTrackManager.m_bDisplayStationName = false;
     }
 
     int rawRadioId = vehicle ? RADIO_MANAGER.GetCurrentRadioStationID() : 0;
